@@ -75,7 +75,7 @@ Goal: represent visual work as editable, layered scenes rather than only flatten
 - [x] Replace one scene layer without recreating the entire scene model
 - [x] Export scenes to PNG, JPEG, WebP, SVG, and PDF where supported
 - [x] Add scene validation and render tests
-- [x] Add richer masks and transforms
+- [ ] Add advanced masks and transforms beyond validated opacity metadata
 
 ## Phase 4 — production deployment
 
@@ -90,6 +90,7 @@ Goal: operate Lumina safely for multiple users and long-running workloads.
 - [x] Add storage adapters for local and S3-compatible object stores
 - [x] Add PostgreSQL and in-memory metadata store contracts
 - [x] Add traces, structured logs, and audit events
+- [x] Expose provider-cost totals in runtime metrics
 - [x] Add retention policies
 - [x] Add provider retry budgets, circuit breakers, and idempotency keys
 - [x] Add end-to-end API, security, and concurrent execution tests

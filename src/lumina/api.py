@@ -19,6 +19,7 @@ from .providers import ProviderError
 from .resilience import IdempotencyStore
 from .runtime import QuotaPolicy, RuntimeMetrics
 from .scenes import Scene, SceneValidationError
+from .telemetry import RequestTelemetry
 
 
 def create_app(output_dir: Path | str | None = None) -> FastAPI:
@@ -31,6 +32,7 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
     audit = AuditLog()
     rate_limiter = RateLimiter()
     tenant_policy = TenantPolicy()
+    telemetry = RequestTelemetry()
     app = FastAPI(
         title="Lumina Runtime",
         version=__version__,
@@ -87,6 +89,7 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
         metrics.increment("image.create")
         try:
             result = engine.create(request.prompt, request.width, request.height, request.provider)
+            telemetry.record(_auth, "image.create", 0.0)
             audit.record("image.created", tenant_id=_auth, artifact_id=result.artifact_id)
             return result.artifact_dict()
         except ProviderError as exc:
@@ -104,7 +107,11 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
 
     @app.get("/v1/metrics")
     def metrics_snapshot():
-        return {"counts": metrics.snapshot(), "quota_limit": quota.limit}
+        return {
+            "counts": metrics.snapshot(),
+            "quota_limit": quota.limit,
+            "provider_cost": telemetry.total_cost(),
+        }
 
     @app.post("/v1/scenes/render")
     def render_scene(request: dict, _auth: None = Depends(require_api_key)):
