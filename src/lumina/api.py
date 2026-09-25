@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from PIL import Image
 
 from . import __version__
@@ -82,12 +82,16 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
     @app.get("/v1/artifacts/{artifact_id}/content")
     def artifact_content(artifact_id: str):
         try:
-            path = engine.artifact_path(artifact_id)
+            data = engine.artifact_bytes(artifact_id)
         except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail="artifact not found") from exc
         except UnsafeOperation as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return FileResponse(path, media_type="image/png", filename=f"{artifact_id}.png")
+        return Response(
+            content=data,
+            media_type="image/png",
+            headers={"content-disposition": f'attachment; filename="{artifact_id}.png"'},
+        )
 
     @app.post("/v1/images/compare")
     def compare(request: dict):

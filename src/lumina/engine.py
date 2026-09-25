@@ -4,6 +4,7 @@ import base64
 import io
 import os
 import re
+import threading
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,6 +50,7 @@ class VisualEngine:
     def __init__(self, output_dir: Path | str):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self._retention_lock = threading.RLock()
         base_url = os.getenv("IMAGE_BASE_URL")
         api_key = os.getenv("IMAGE_API_KEY")
         self.external = (
@@ -236,25 +238,38 @@ class VisualEngine:
             raise FileNotFoundError(artifact_id)
         return path
 
-    def _enforce_retention(self) -> None:
+    def artifact_bytes(self, artifact_id: str) -> bytes:
+        path = self.artifact_path(artifact_id)
+        with self._retention_lock:
+            try:
+                return path.read_bytes()
+            except FileNotFoundError as exc:
+                raise FileNotFoundError(artifact_id) from exc
+
+    def _enforce_retention_locked(self) -> None:
         try:
             limit = min(10_000, max(1, int(os.getenv("LUMINA_MAX_ARTIFACTS", "1000"))))
         except ValueError:
             limit = 1000
-        artifacts = sorted(self.output_dir.glob("*.png"), key=lambda path: path.stat().st_mtime)
-        for path in artifacts[max(0, limit - 1) :]:
-            path.unlink(missing_ok=True)
+        with self._retention_lock:
+            artifacts = sorted(
+                self.output_dir.glob("*.png"),
+                key=lambda path: path.stat().st_mtime,
+            )
+            for path in artifacts[max(0, limit - 1) :]:
+                path.unlink(missing_ok=True)
 
     def _persist(
         self, image: Image.Image, provider: str, operation: str, revision: int
     ) -> VisualResult:
         image = image.convert("RGB")
         artifact_id = uuid.uuid4().hex
-        self._enforce_retention()
-        path = self.output_dir / f"{artifact_id}.png"
-        image.save(path, "PNG", optimize=True)
-        buffer = io.BytesIO()
-        image.save(buffer, "PNG", optimize=True)
+        with self._retention_lock:
+            self._enforce_retention_locked()
+            path = self.output_dir / f"{artifact_id}.png"
+            image.save(path, "PNG", optimize=True)
+            buffer = io.BytesIO()
+            image.save(buffer, "PNG", optimize=True)
         return VisualResult(
             artifact_id=artifact_id,
             image_base64=base64.b64encode(buffer.getvalue()).decode(),
