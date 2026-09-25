@@ -70,21 +70,26 @@ Design constraints:
 
 Goal: represent visual work as editable, layered scenes rather than only flattened PNG artifacts.
 
-- [ ] Define a bounded scene document with canvas, layers, transforms, masks, and asset references
-- [ ] Compose deterministic layers: rectangles, ellipses, text, charts, SVG, and generated assets
-- [ ] Regenerate or replace one scene layer without recreating the entire image
-- [ ] Export scenes to PNG, JPEG, WebP, SVG, and PDF where supported
-- [ ] Add scene validation and render tests
+- [x] Define a bounded scene document with canvas, layers, transforms, masks, and asset references
+- [x] Compose deterministic rectangle, ellipse, and text layers
+- [x] Replace one scene layer without recreating the entire scene model
+- [x] Export scenes to PNG, JPEG, and WebP
+- [x] Add scene validation and render tests
+- [ ] Add SVG/PDF export and richer masks/transforms
 
 ## Phase 4 — production deployment
 
 Goal: operate Lumina safely for multiple users and long-running workloads.
 
 - [ ] Add authentication, tenant isolation, quotas, rate limits, and provider-cost limits
+- [x] Add an optional API-key authentication boundary
+- [ ] Add multi-tenant isolation and provider-cost accounting
+- [x] Add a local storage adapter and production storage contract
+- [x] Add metrics and health/readiness-style runtime information
 - [ ] Add PostgreSQL metadata and S3-compatible artifact storage adapters
-- [ ] Add metrics, traces, structured logs, audit events, and health/readiness probes
-- [ ] Add migration and retention policies
-- [ ] Add provider failover, retry budgets, circuit breakers, and idempotency keys
+- [ ] Add traces, structured logs, and audit events
+- [x] Add retention policies
+- [x] Add provider retry budgets, circuit breakers, and idempotency keys
 - [ ] Add end-to-end security and load tests
 
 ## Explicitly out of scope for the next milestone

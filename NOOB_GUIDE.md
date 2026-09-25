@@ -279,9 +279,22 @@ Lumina limits upload bytes, decoded dimensions, provider responses, and pixels f
 
 ## What is not finished yet
 
-See [PLAN.md](PLAN.md) for the phased backlog. The next practical phase adds image comparison, artifact retrieval, and a Python client. Later phases add durable asynchronous jobs, semantic vision, MCP, editable scene graphs, and production security/storage.
+See [PLAN.md](PLAN.md) for the phased backlog. Phase 3 adds validated scene composition. Production foundations include optional API-key protection, process-local metrics, quotas, storage boundaries, and resilience primitives. Distributed PostgreSQL/S3 deployment and production observability remain future work.
 
-## Development commands
+## Scenes and production foundations
+
+Render a validated scene:
+
+```bash
+curl -X POST http://127.0.0.1:8000/v1/scenes/render \
+  -H 'content-type: application/json' \
+  -d '{"width":128,"height":80,"layers":[{"id":"title","type":"text","text":"LUMINA","xy":[8,20],"size":20}]}'
+```
+
+Set `LUMINA_API_KEY` to require `X-API-Key: <key>` on visual, artifact, and job routes. `/health` remains public. `/v1/metrics` exposes process-local counters and the configured quota limit.
+
+The repository also contains the boundaries needed for production work: `lumina.production.Storage`, `RuntimeMetrics`, `QuotaPolicy`, `CircuitBreaker`, and `IdempotencyStore`. They are tested building blocks, not a claim of distributed deployment.
+
 
 ```bash
 pytest -q

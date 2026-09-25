@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.responses import Response
 from PIL import Image
 
@@ -13,13 +13,18 @@ from . import __version__
 from .engine import MAX_BYTES, UnsafeOperation, VisualEngine
 from .jobs import JobStore
 from .models import CreateRequest, EditRequest, ReviseRequest
+from .production import valid_api_key
 from .providers import ProviderError
+from .runtime import QuotaPolicy, RuntimeMetrics
+from .scenes import Scene, SceneValidationError
 
 
 def create_app(output_dir: Path | str | None = None) -> FastAPI:
     root = output_dir or os.getenv("LUMINA_OUTPUT_DIR", "./output")
     engine = VisualEngine(root)
     jobs = JobStore(Path(root) / "jobs.sqlite3")
+    metrics = RuntimeMetrics()
+    quota = QuotaPolicy()
     app = FastAPI(
         title="Lumina Runtime",
         version=__version__,
@@ -27,6 +32,10 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
             "Visual creation, inspection, editing, and revision tools for text-only agents."
         ),
     )
+
+    def require_api_key(x_api_key: str | None = Header(default=None)):
+        if not valid_api_key(x_api_key):
+            raise HTTPException(status_code=401, detail="invalid API key")
 
     @app.get("/health")
     def health():
@@ -44,12 +53,17 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
                 "semantic-vision-contract",
                 "quality-gates",
                 "mcp-adapter",
+                "scene-composition",
+                "metrics",
                 "openai-compatible",
             ],
         }
 
     @app.post("/v1/images", status_code=201)
-    def create(request: CreateRequest):
+    def create(request: CreateRequest, _auth: None = Depends(require_api_key)):
+        if not quota.allow(metrics.snapshot().get("image.create", 0)):
+            raise HTTPException(status_code=429, detail="image quota exceeded")
+        metrics.increment("image.create")
         try:
             return engine.create(
                 request.prompt, request.width, request.height, request.provider
@@ -58,7 +72,7 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     @app.post("/v1/images/analyze")
-    async def analyze(image: Annotated[UploadFile, File()]):
+    async def analyze(image: Annotated[UploadFile, File()], _auth: None = Depends(require_api_key)):
         if not (image.content_type or "").startswith("image/"):
             raise HTTPException(status_code=415, detail="content type must be image/*")
         try:
@@ -67,8 +81,38 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
         except UnsafeOperation as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/v1/metrics")
+    def metrics_snapshot():
+        return {"counts": metrics.snapshot(), "quota_limit": quota.limit}
+
+    @app.post("/v1/scenes/render")
+    def render_scene(request: dict, _auth: None = Depends(require_api_key)):
+        if not quota.allow(metrics.snapshot().get("scene.render", 0)):
+            metrics.increment("scene.render")
+            raise HTTPException(status_code=429, detail="scene quota exceeded")
+        metrics.increment("scene.render")
+        try:
+            scene = Scene(
+                width=int(request.get("width", 512)),
+                height=int(request.get("height", 512)),
+                background=request.get("background", "#ffffff"),
+                layers=request.get("layers", []),
+            )
+            target = Path(root) / f"scene-{metrics.snapshot().get('scene.render', 0)}.png"
+            scene.render(target)
+            with Image.open(target) as rendered:
+                artifact = engine._persist(rendered, "scene", "render", 1)
+            target.unlink()
+            return {
+                "artifact_id": artifact.artifact_id,
+                "mime_type": "image/png",
+                "size_bytes": len(base64.b64decode(artifact.image_base64)),
+            }
+        except (SceneValidationError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.post("/v1/jobs", status_code=202)
-    def create_job(request: dict):
+    def create_job(request: dict, _auth: None = Depends(require_api_key)):
         operation = request.get("operation")
         payload = request.get("payload")
         if not isinstance(operation, str):
@@ -81,21 +125,21 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.get("/v1/jobs/{job_id}")
-    def get_job(job_id: str):
+    def get_job(job_id: str, _auth: None = Depends(require_api_key)):
         try:
             return jobs.get(job_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="job not found") from exc
 
     @app.post("/v1/jobs/{job_id}/cancel")
-    def cancel_job(job_id: str):
+    def cancel_job(job_id: str, _auth: None = Depends(require_api_key)):
         try:
             return jobs.cancel(job_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="job not found") from exc
 
     @app.get("/v1/artifacts/{artifact_id}")
-    def artifact_metadata(artifact_id: str):
+    def artifact_metadata(artifact_id: str, _auth: None = Depends(require_api_key)):
         try:
             path = engine.artifact_path(artifact_id)
         except FileNotFoundError as exc:
@@ -113,7 +157,7 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
         }
 
     @app.get("/v1/artifacts/{artifact_id}/content")
-    def artifact_content(artifact_id: str):
+    def artifact_content(artifact_id: str, _auth: None = Depends(require_api_key)):
         try:
             data = engine.artifact_bytes(artifact_id)
         except FileNotFoundError as exc:
@@ -127,7 +171,7 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
         )
 
     @app.post("/v1/images/compare")
-    def compare(request: dict):
+    def compare(request: dict, _auth: None = Depends(require_api_key)):
         try:
             original = base64.b64decode(request.get("original_base64", ""), validate=True)
             candidate = base64.b64decode(request.get("candidate_base64", ""), validate=True)
@@ -140,7 +184,7 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/v1/images/edit")
-    def edit(request: EditRequest):
+    def edit(request: EditRequest, _auth: None = Depends(require_api_key)):
         try:
             data = base64.b64decode(request.image_base64, validate=True)
         except (ValueError, TypeError) as exc:
@@ -151,7 +195,7 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/v1/images/revise")
-    def revise(request: ReviseRequest):
+    def revise(request: ReviseRequest, _auth: None = Depends(require_api_key)):
         try:
             configured_limit = min(3, max(1, int(os.getenv("LUMINA_MAX_ITERATIONS", "3"))))
         except ValueError:

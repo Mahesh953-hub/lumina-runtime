@@ -94,6 +94,12 @@ VisualEngine ---- observation / quality feedback
 
 The runtime intentionally combines deterministic and neural tools. Shapes, labels, and layouts use precise tools; open-ended generation uses a configured neural backend; every result can be inspected again.
 
+- Scenes support validated rectangle, ellipse, and text layers, replacement of a named layer, and PNG/JPEG/WebP export.
+- `/v1/scenes/render` renders a scene into a Lumina artifact and counts the operation in `/v1/metrics`.
+- `LUMINA_API_KEY` enables optional API-key protection for visual, artifact, and job routes; `/health` remains public.
+- `lumina.production` defines a storage adapter contract and local implementation.
+- `lumina.runtime` provides quota and metric primitives; `lumina.resilience` provides circuit-breaker and idempotency primitives.
+
 ## Configuration
 
 | Variable | Default | Meaning |
@@ -103,6 +109,8 @@ The runtime intentionally combines deterministic and neural tools. Shapes, label
 | `IMAGE_API_KEY` | unset | Provider API key |
 | `LUMINA_MAX_ITERATIONS` | `3` | Maximum revision iterations accepted by the API |
 | `LUMINA_MAX_ARTIFACTS` | `1000` | Maximum retained local PNG artifacts (1–10,000) |
+| `LUMINA_API_KEY` | unset | Optional API key for protected routes |
+| `LUMINA_QUOTA_LIMIT` | `1000` | Per-process request quota for image/scene operations |
 | `LUMINA_HOST` | `127.0.0.1` | Bind address |
 | `LUMINA_PORT` | `8000` | Bind port |
 
