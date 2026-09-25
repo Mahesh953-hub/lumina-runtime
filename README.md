@@ -15,6 +15,10 @@ Lumina is not a new model. It is the visual execution layer between an agent and
 - Bounded dimensions, decoded-image validation, and opaque artifact IDs
 - Tests, Docker image, CLI, and CI configuration
 
+## Documentation
+
+New users should read [NOOB_GUIDE.md](NOOB_GUIDE.md) for installation, concepts, API examples, and troubleshooting. The implementation backlog and acceptance criteria live in [PLAN.md](PLAN.md).
+
 ## Quick start
 
 ```bash
