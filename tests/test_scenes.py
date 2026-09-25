@@ -46,7 +46,7 @@ def test_scene_exports_webp_and_rejects_unsupported_format(tmp_path):
     scene = Scene(width=32, height=32, layers=[])
     assert scene.export(tmp_path / "scene.webp", "WEBP").exists()
     with pytest.raises(SceneValidationError):
-        scene.export(tmp_path / "scene.pdf", "PDF")
+        scene.export(tmp_path / "scene.tiff", "TIFF")
 
 
 def test_scene_rejects_invalid_layers():

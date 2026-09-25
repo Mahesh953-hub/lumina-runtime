@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import html
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -78,9 +79,49 @@ class Scene:
         return image
 
     def export(self, path: Path | str, format: str = "PNG") -> Path:
+        format = format.upper()
+        if format in {"SVG", "PDF"}:
+            target = Path(path)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if format == "SVG":
+                elements = [
+                    (
+                        f'<svg xmlns="http://www.w3.org/2000/svg" '
+                        f'width="{self.width}" height="{self.height}">'
+                    ),
+                    f'<rect width="100%" height="100%" fill="{self.background}"/>',
+                ]
+                for layer in self.layers:
+                    if layer["type"] == "rectangle":
+                        x0, y0, x1, y1 = layer["box"]
+                        color = layer.get("fill", "#000000")
+                        elements.append(
+                            f'<rect x="{x0}" y="{y0}" width="{x1 - x0}" '
+                            f'height="{y1 - y0}" fill="{color}"/>'
+                        )
+                    elif layer["type"] == "ellipse":
+                        x0, y0, x1, y1 = layer["box"]
+                        color = layer.get("fill", "#000000")
+                        elements.append(
+                            f'<ellipse cx="{(x0 + x1) / 2}" cy="{(y0 + y1) / 2}" '
+                            f'rx="{(x1 - x0) / 2}" ry="{(y1 - y0) / 2}" fill="{color}"/>'
+                        )
+                    else:
+                        x, y = layer.get("xy", [0, 0])
+                        color = layer.get("fill", "#000000")
+                        size = layer.get("size", 16)
+                        elements.append(
+                            f'<text x="{x}" y="{y}" fill="{color}" '
+                            f'font-size="{size}">{html.escape(layer["text"])}</text>'
+                        )
+                elements.append("</svg>")
+                target.write_text("".join(elements), encoding="utf-8")
+            else:
+                self.render_image().save(target, format="PDF", resolution=144.0)
+            return target
         formats = {"PNG", "JPEG", "WEBP"}
-        if format.upper() not in formats:
-            raise SceneValidationError("supported scene exports are PNG, JPEG, and WEBP")
+        if format not in formats:
+            raise SceneValidationError("supported scene exports are PNG, JPEG, WEBP, SVG, and PDF")
         target = Path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
         image = self.render_image()

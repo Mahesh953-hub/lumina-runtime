@@ -73,9 +73,9 @@ Goal: represent visual work as editable, layered scenes rather than only flatten
 - [x] Define a bounded scene document with canvas, layers, transforms, masks, and asset references
 - [x] Compose deterministic rectangle, ellipse, and text layers
 - [x] Replace one scene layer without recreating the entire scene model
-- [x] Export scenes to PNG, JPEG, and WebP
+- [x] Export scenes to PNG, JPEG, WebP, SVG, and PDF where supported
 - [x] Add scene validation and render tests
-- [ ] Add SVG/PDF export and richer masks/transforms
+- [ ] Add richer masks and transforms
 
 ## Phase 4 — production deployment
 
@@ -90,7 +90,7 @@ Goal: operate Lumina safely for multiple users and long-running workloads.
 - [ ] Add traces, structured logs, and audit events
 - [x] Add retention policies
 - [x] Add provider retry budgets, circuit breakers, and idempotency keys
-- [ ] Add end-to-end security and load tests
+- [x] Add end-to-end API, security, and concurrent execution tests
 
 ## Explicitly out of scope for the next milestone
 

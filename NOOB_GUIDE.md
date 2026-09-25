@@ -293,7 +293,7 @@ curl -X POST http://127.0.0.1:8000/v1/scenes/render \
 
 Set `LUMINA_API_KEY` to require `X-API-Key: <key>` on visual, artifact, and job routes. `/health` remains public. `/v1/metrics` exposes process-local counters and the configured quota limit.
 
-The repository also contains the boundaries needed for production work: `lumina.production.Storage`, `RuntimeMetrics`, `QuotaPolicy`, `CircuitBreaker`, and `IdempotencyStore`. They are tested building blocks, not a claim of distributed deployment.
+The repository also contains the boundaries needed for production work: `lumina.production.Storage`, `RuntimeMetrics`, `QuotaPolicy`, `CircuitBreaker`, and `IdempotencyStore`. They are tested building blocks, not a claim of distributed deployment. Scene exports include PNG, JPEG, WebP, SVG, and PDF.
 
 
 ```bash

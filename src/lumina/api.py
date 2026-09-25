@@ -15,6 +15,7 @@ from .jobs import JobStore
 from .models import CreateRequest, EditRequest, ReviseRequest
 from .production import valid_api_key
 from .providers import ProviderError
+from .resilience import IdempotencyStore
 from .runtime import QuotaPolicy, RuntimeMetrics
 from .scenes import Scene, SceneValidationError
 
@@ -25,6 +26,7 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
     jobs = JobStore(Path(root) / "jobs.sqlite3")
     metrics = RuntimeMetrics()
     quota = QuotaPolicy()
+    idempotency = IdempotencyStore()
     app = FastAPI(
         title="Lumina Runtime",
         version=__version__,
@@ -115,14 +117,25 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
     def create_job(request: dict, _auth: None = Depends(require_api_key)):
         operation = request.get("operation")
         payload = request.get("payload")
+        idempotency_key = request.get("idempotency_key")
+        if idempotency_key is not None and not isinstance(idempotency_key, str):
+            raise HTTPException(status_code=422, detail="idempotency_key must be a string")
         if not isinstance(operation, str):
             raise HTTPException(status_code=422, detail="operation is required")
         if not isinstance(payload, dict):
             payload = {key: value for key, value in request.items() if key != "operation"}
+        existing = None
+        if idempotency_key is not None:
+            existing, created = idempotency.get_or_create(idempotency_key)
+            if not created:
+                return existing
         try:
-            return jobs.create(operation, payload)
+            job = jobs.create(operation, payload)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+        if idempotency_key is not None:
+            idempotency.responses[idempotency_key] = job
+        return job
 
     @app.get("/v1/jobs/{job_id}")
     def get_job(job_id: str, _auth: None = Depends(require_api_key)):
