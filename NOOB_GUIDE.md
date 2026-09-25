@@ -159,6 +159,28 @@ curl -X POST http://127.0.0.1:8000/v1/images/revise \
 
 The current revision loop understands deterministic instructions such as contrast, brightness, and sharpness. More meaningful revisions require a vision model and a visual planner in later phases.
 
+## Compare and retrieve artifacts
+
+Compare two same-sized images:
+
+```bash
+curl -X POST http://127.0.0.1:8000/v1/images/compare \
+  -H 'content-type: application/json' \
+  -d '{"original_base64":"...","candidate_base64":"..."}'
+```
+
+The response includes `mismatch_fraction`, `mean_absolute_error`, `rms_error`, and a `difference_artifact_id`. Retrieve metadata or download the stored PNG with `/v1/artifacts/{artifact_id}` and `/v1/artifacts/{artifact_id}/content`.
+
+Use the SDK:
+
+```python
+from lumina.client import LuminaClient
+
+with LuminaClient() as lumina:
+    result = lumina.create("a red circle", 256, 256)
+    lumina.download(result["artifact_id"], "circle.png")
+```
+
 ## Use an external image provider
 
 For realistic generated images, configure an OpenAI-compatible image endpoint:

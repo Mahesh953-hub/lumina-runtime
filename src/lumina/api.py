@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
+from PIL import Image
 
 from . import __version__
 from .engine import MAX_BYTES, UnsafeOperation, VisualEngine
@@ -29,7 +31,15 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
         return {
             "status": "ok",
             "version": __version__,
-            "capabilities": ["canvas", "analysis", "safe_edit", "revision", "openai-compatible"],
+            "capabilities": [
+                "canvas",
+                "analysis",
+                "safe_edit",
+                "revision",
+                "compare",
+                "artifact-retrieval",
+                "openai-compatible",
+            ],
         }
 
     @app.post("/v1/images", status_code=201)
@@ -48,6 +58,47 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
         try:
             data = await image.read(MAX_BYTES + 1)
             return engine.analyze(data).artifact_dict()
+        except UnsafeOperation as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/v1/artifacts/{artifact_id}")
+    def artifact_metadata(artifact_id: str):
+        try:
+            path = engine.artifact_path(artifact_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail="artifact not found") from exc
+        except UnsafeOperation as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        with Image.open(path) as image:
+            width, height = image.size
+        return {
+            "artifact_id": artifact_id,
+            "mime_type": "image/png",
+            "width": width,
+            "height": height,
+            "size_bytes": path.stat().st_size,
+        }
+
+    @app.get("/v1/artifacts/{artifact_id}/content")
+    def artifact_content(artifact_id: str):
+        try:
+            path = engine.artifact_path(artifact_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail="artifact not found") from exc
+        except UnsafeOperation as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return FileResponse(path, media_type="image/png", filename=f"{artifact_id}.png")
+
+    @app.post("/v1/images/compare")
+    def compare(request: dict):
+        try:
+            original = base64.b64decode(request.get("original_base64", ""), validate=True)
+            candidate = base64.b64decode(request.get("candidate_base64", ""), validate=True)
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(status_code=400, detail="images must be valid base64") from exc
+        try:
+            _, metrics = engine.compare_bytes(original, candidate)
+            return metrics
         except UnsafeOperation as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

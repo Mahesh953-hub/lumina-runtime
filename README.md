@@ -63,6 +63,10 @@ Then submit `"provider": "openai-compatible"`. Provider responses are copied to 
 | `analyze_image` | Return machine-readable visual observations |
 | `edit_image` | Apply one allow-listed editing operation |
 | `revise_image` | Run a bounded visual feedback iteration |
+| `compare_images` | Return mismatch metrics and a difference artifact |
+| `get_artifact` | Retrieve metadata or download a stored artifact |
+
+Python callers can use `lumina.client.LuminaClient` instead of writing HTTP requests by hand.
 
 Supported edit operations include `draw_rectangle`, `draw_ellipse`, `draw_text`, `blur`, `sharpen`, `brighten`, and `contrast`. The API rejects unknown operations instead of executing arbitrary code or shell commands.
 

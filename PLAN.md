@@ -27,11 +27,11 @@ Lumina is a multimodal execution runtime for text-only agents. It exposes safe, 
 
 Goal: make Lumina useful for building, evaluating, and retrieving ordinary images without a diffusion model.
 
-- [ ] Compare two images and return pixel mismatch, RMS, mean absolute error, and a bounded difference artifact
-- [ ] Retrieve artifacts by opaque ID and return metadata without exposing arbitrary filesystem paths
-- [ ] Publish a Python client SDK for create, analyze, compare, edit, revise, and artifact download
-- [ ] Add tests for malformed Base64, mismatched dimensions, missing artifacts, and traversal-safe artifact lookup
-- [ ] Verify the complete repository, commit, and push this phase without the CI workflow
+- [x] Compare two images and return pixel mismatch, RMS, mean absolute error, and a bounded difference artifact
+- [x] Retrieve artifacts by opaque ID and return metadata without exposing arbitrary filesystem paths
+- [x] Publish a Python client SDK for create, analyze, compare, edit, revise, and artifact download
+- [x] Add tests for malformed Base64, mismatched dimensions, missing artifacts, and traversal-safe artifact lookup
+- [x] Verify the complete repository, commit, and push this phase without the CI workflow
 
 Acceptance:
 

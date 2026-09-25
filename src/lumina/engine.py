@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import io
 import os
+import re
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -82,6 +83,28 @@ class VisualEngine:
         return self.edit_bytes(
             base64.b64decode(result.image_base64), operation, params, result.revision + 1
         )
+
+    def compare_bytes(self, original: bytes, candidate: bytes) -> tuple[VisualResult, dict]:
+        left = self._decode(original)
+        right = self._decode(candidate)
+        if left.size != right.size:
+            raise UnsafeOperation("images must have identical dimensions for comparison")
+        import numpy as np
+
+        difference = np.abs(np.asarray(left, dtype=np.int16) - np.asarray(right, dtype=np.int16))
+        changed = np.any(difference > 0, axis=2)
+        visual = Image.fromarray(difference.astype(np.uint8), mode="RGB")
+        artifact = self._persist(visual, "local", "compare", 1)
+        metrics = {
+            "identical": bool(not changed.any()),
+            "mismatch_fraction": round(float(changed.mean()), 6),
+            "mean_absolute_error": round(float(difference.mean()), 6),
+            "rms_error": round(float(np.sqrt(np.mean(difference.astype(np.float64) ** 2))), 6),
+            "width": left.width,
+            "height": left.height,
+            "difference_artifact_id": artifact.artifact_id,
+        }
+        return artifact, metrics
 
     def revise(
         self, result: VisualResult, instruction: str, max_iterations: int = 1
@@ -204,6 +227,14 @@ class VisualEngine:
             return ImageColor.getrgb(value) and value if not isinstance(value, str) else value
         except (TypeError, ValueError) as exc:
             raise UnsafeOperation("invalid color") from exc
+
+    def artifact_path(self, artifact_id: str) -> Path:
+        if not re.fullmatch(r"[a-f0-9]{32}", artifact_id):
+            raise UnsafeOperation("invalid artifact id")
+        path = self.output_dir / f"{artifact_id}.png"
+        if not path.is_file():
+            raise FileNotFoundError(artifact_id)
+        return path
 
     def _enforce_retention(self) -> None:
         try:
