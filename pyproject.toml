@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lumina-runtime"
+version = "0.1.0"
+description = "A multimodal runtime that gives text-only agents visual creation and perception tools."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{name = "Lumina contributors"}]
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.30,<1",
+  "pydantic>=2.8,<3",
+  "pillow>=10.4,<13",
+  "numpy>=1.26,<3",
+  "httpx>=0.27,<1",
+  "python-multipart>=0.0.9,<1",
+]
+
+[project.optional-dependencies]
+opencv = ["opencv-python-headless>=4.10,<5"]
+dev = ["pytest>=8.3,<9", "pytest-cov>=5,<7", "ruff>=0.6,<1"]
+
+[project.scripts]
+lumina = "lumina.cli:main"
+
+[project.urls]
+Repository = "https://github.com/Mahesh953-hub/lumina-runtime"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lumina"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
