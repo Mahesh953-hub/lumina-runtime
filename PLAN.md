@@ -41,15 +41,23 @@ Acceptance:
 4. The SDK talks to the HTTP contract rather than bypassing it with server internals.
 5. Ruff, Bandit, and all tests pass locally.
 
+Phase 2 acceptance:
+
+1. Job records survive process restarts in SQLite and interrupted running jobs are requeued.
+2. A separate worker can create, analyze, compare, edit, and revise artifacts.
+3. Cancellation is terminal and progress events remain replayable.
+4. Semantic feedback has a typed provider contract and a quality gate.
+5. MCP tool names are translated through the canonical HTTP boundary.
+
 ## Phase 2 — long-running and semantic execution
 
 Goal: let agents run expensive work asynchronously and improve outputs using semantic feedback.
 
-- [ ] Add durable job records with `queued`, `running`, `completed`, `failed`, and `canceled` states
-- [ ] Add worker execution, progress events, cancellation, and restart recovery
-- [ ] Add a semantic vision-provider contract for captions, objects, OCR, relationships, and required-element coverage
-- [ ] Add quality gates and bounded automatic revision until requirements pass
-- [ ] Add MCP as an adapter over the canonical HTTP API
+- [x] Add durable job records with `queued`, `running`, `completed`, `failed`, and `canceled` states
+- [x] Add worker execution, progress events, cancellation, and restart recovery
+- [x] Add a semantic vision-provider contract for captions, objects, OCR, relationships, and required-element coverage
+- [x] Add quality gates and bounded automatic revision until requirements pass
+- [x] Add MCP as an adapter over the canonical HTTP API
 
 Design constraints:
 

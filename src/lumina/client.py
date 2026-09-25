@@ -72,6 +72,15 @@ class LuminaClient:
             },
         )
 
+    def job(self, operation: str, payload: dict) -> dict:
+        return self._request("POST", "/v1/jobs", json={"operation": operation, "payload": payload})
+
+    def get_job(self, job_id: str) -> dict:
+        return self._request("GET", f"/v1/jobs/{job_id}")
+
+    def cancel_job(self, job_id: str) -> dict:
+        return self._request("POST", f"/v1/jobs/{job_id}/cancel")
+
     def artifact(self, artifact_id: str) -> dict:
         return self._request("GET", f"/v1/artifacts/{artifact_id}")
 

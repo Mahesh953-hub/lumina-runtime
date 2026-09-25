@@ -26,6 +26,7 @@ dev = ["pytest>=8.3,<9", "pytest-cov>=5,<7", "ruff>=0.6,<1"]
 
 [project.scripts]
 lumina = "lumina.cli:main"
+lumina-worker = "lumina.worker:main"
 
 [project.urls]
 Repository = "https://github.com/Mahesh953-hub/lumina-runtime"

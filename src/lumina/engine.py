@@ -108,6 +108,20 @@ class VisualEngine:
         }
         return artifact, metrics
 
+    def revise_until_quality_gate(self, result: VisualResult, provider, max_attempts: int = 3):
+        from .vision import quality_gate
+
+        current = result
+        report = {"attempts": 0, "passed": False}
+        for _ in range(max(1, min(3, max_attempts))):
+            observation = provider(current)
+            report = quality_gate(observation)
+            report["attempts"] = report.get("attempts", 0) + 1
+            if report["passed"]:
+                return current, report
+            current = self.revise(current, "increase contrast", 1)
+        return current, report
+
     def revise(
         self, result: VisualResult, instruction: str, max_iterations: int = 1
     ) -> VisualResult:

@@ -159,6 +159,20 @@ curl -X POST http://127.0.0.1:8000/v1/images/revise \
 
 The current revision loop understands deterministic instructions such as contrast, brightness, and sharpness. More meaningful revisions require a vision model and a visual planner in later phases.
 
+## Long-running jobs
+
+Queue an asynchronous visual job:
+
+```bash
+curl -X POST http://127.0.0.1:8000/v1/jobs \
+  -H 'content-type: application/json' \
+  -d '{"operation":"create","payload":{"prompt":"a red circle","width":256,"height":256}}'
+```
+
+Read its state and replayable events with `GET /v1/jobs/{job_id}`. Cancel a job with `POST /v1/jobs/{job_id}/cancel`. Run a separate worker with `lumina-worker --output-dir ./output`; it processes one job at a time and recovers interrupted running jobs on startup. Use `lumina-worker --once` in a test or controlled batch process.
+
+Semantic providers implement the `SemanticVisionProvider` contract and return `SemanticObservation` values containing captions, objects, relationships, OCR text, and required-element coverage. `quality_gate()` turns that feedback into a pass/fail decision. Lumina does not pretend that its pixel observations are semantic understanding.
+
 ## Compare and retrieve artifacts
 
 Compare two same-sized images:

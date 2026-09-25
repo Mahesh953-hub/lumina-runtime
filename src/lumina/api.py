@@ -11,6 +11,7 @@ from PIL import Image
 
 from . import __version__
 from .engine import MAX_BYTES, UnsafeOperation, VisualEngine
+from .jobs import JobStore
 from .models import CreateRequest, EditRequest, ReviseRequest
 from .providers import ProviderError
 
@@ -18,6 +19,7 @@ from .providers import ProviderError
 def create_app(output_dir: Path | str | None = None) -> FastAPI:
     root = output_dir or os.getenv("LUMINA_OUTPUT_DIR", "./output")
     engine = VisualEngine(root)
+    jobs = JobStore(Path(root) / "jobs.sqlite3")
     app = FastAPI(
         title="Lumina Runtime",
         version=__version__,
@@ -38,6 +40,10 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
                 "revision",
                 "compare",
                 "artifact-retrieval",
+                "durable-jobs",
+                "semantic-vision-contract",
+                "quality-gates",
+                "mcp-adapter",
                 "openai-compatible",
             ],
         }
@@ -60,6 +66,33 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
             return engine.analyze(data).artifact_dict()
         except UnsafeOperation as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/v1/jobs", status_code=202)
+    def create_job(request: dict):
+        operation = request.get("operation")
+        payload = request.get("payload")
+        if not isinstance(operation, str):
+            raise HTTPException(status_code=422, detail="operation is required")
+        if not isinstance(payload, dict):
+            payload = {key: value for key, value in request.items() if key != "operation"}
+        try:
+            return jobs.create(operation, payload)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/v1/jobs/{job_id}")
+    def get_job(job_id: str):
+        try:
+            return jobs.get(job_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="job not found") from exc
+
+    @app.post("/v1/jobs/{job_id}/cancel")
+    def cancel_job(job_id: str):
+        try:
+            return jobs.cancel(job_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="job not found") from exc
 
     @app.get("/v1/artifacts/{artifact_id}")
     def artifact_metadata(artifact_id: str):

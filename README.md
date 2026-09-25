@@ -64,9 +64,12 @@ Then submit `"provider": "openai-compatible"`. Provider responses are copied to 
 | `edit_image` | Apply one allow-listed editing operation |
 | `revise_image` | Run a bounded visual feedback iteration |
 | `compare_images` | Return mismatch metrics and a difference artifact |
+| `create_job` | Queue a durable visual job |
+| `get_job` | Read job state, result, and replayable events |
+| `cancel_job` | Cancel a queued or running job |
 | `get_artifact` | Retrieve metadata or download a stored artifact |
 
-Python callers can use `lumina.client.LuminaClient` instead of writing HTTP requests by hand.
+`LuminaMCPAdapter` in `lumina.mcp` maps MCP-style tool names to the canonical HTTP API. `SemanticObservation` and `quality_gate` in `lumina.vision` define the semantic feedback contract for future vision providers.
 
 Supported edit operations include `draw_rectangle`, `draw_ellipse`, `draw_text`, `blur`, `sharpen`, `brighten`, and `contrast`. The API rejects unknown operations instead of executing arbitrary code or shell commands.
 
