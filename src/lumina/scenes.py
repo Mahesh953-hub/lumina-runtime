@@ -47,6 +47,15 @@ class Scene:
                 raise SceneValidationError("shape box must be [x0, y0, x1, y1]")
         if layer["type"] == "text" and not isinstance(layer.get("text"), str):
             raise SceneValidationError("text layer needs text")
+        opacity = layer.get("opacity", 1.0)
+        if not isinstance(opacity, (int, float)) or not 0 <= opacity <= 1:
+            raise SceneValidationError("layer opacity must be between 0 and 1")
+        rotation = layer.get("rotation", 0)
+        if not isinstance(rotation, (int, float)) or not -360 <= rotation <= 360:
+            raise SceneValidationError("layer rotation must be between -360 and 360")
+        mask = layer.get("mask")
+        if mask is not None and not isinstance(mask, dict):
+            raise SceneValidationError("layer mask must be an object")
 
     def replace_layer(self, layer_id: str, replacement: dict) -> Scene:
         self.validate_layer({**replacement, "id": layer_id})
@@ -75,6 +84,7 @@ class Scene:
                     layer["text"][:200],
                     fill=layer.get("fill", "#000000"),
                     font=ImageFont.load_default(size=size),
+                    opacity=int(255 * float(layer.get("opacity", 1.0))),
                 )
         return image
 

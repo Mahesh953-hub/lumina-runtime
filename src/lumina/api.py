@@ -13,7 +13,8 @@ from . import __version__
 from .engine import MAX_BYTES, UnsafeOperation, VisualEngine
 from .jobs import JobStore
 from .models import CreateRequest, EditRequest, ReviseRequest
-from .production import valid_api_key
+from .observability import AuditLog, RateLimiter
+from .production import TenantPolicy, valid_api_key
 from .providers import ProviderError
 from .resilience import IdempotencyStore
 from .runtime import QuotaPolicy, RuntimeMetrics
@@ -27,6 +28,9 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
     metrics = RuntimeMetrics()
     quota = QuotaPolicy()
     idempotency = IdempotencyStore()
+    audit = AuditLog()
+    rate_limiter = RateLimiter()
+    tenant_policy = TenantPolicy()
     app = FastAPI(
         title="Lumina Runtime",
         version=__version__,
@@ -35,9 +39,18 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
         ),
     )
 
-    def require_api_key(x_api_key: str | None = Header(default=None)):
+    def require_api_key(
+        x_api_key: str | None = Header(default=None),
+        x_tenant_id: str | None = Header(default=None),
+    ):
         if not valid_api_key(x_api_key):
             raise HTTPException(status_code=401, detail="invalid API key")
+        tenant_id = x_tenant_id or "default"
+        if not rate_limiter.allow(tenant_id):
+            raise HTTPException(status_code=429, detail="rate limit exceeded")
+        if not tenant_policy.allow(tenant_id, 0.0, 0):
+            raise HTTPException(status_code=429, detail="tenant policy exceeded")
+        return tenant_id
 
     @app.get("/health")
     def health():
@@ -58,18 +71,24 @@ def create_app(output_dir: Path | str | None = None) -> FastAPI:
                 "scene-composition",
                 "metrics",
                 "openai-compatible",
+                "multi-tenant-policy",
+                "rate-limiting",
+                "audit-log",
+                "provider-failover",
+                "s3-adapter",
+                "postgres-adapter",
             ],
         }
 
     @app.post("/v1/images", status_code=201)
-    def create(request: CreateRequest, _auth: None = Depends(require_api_key)):
+    def create(request: CreateRequest, _auth: str = Depends(require_api_key)):
         if not quota.allow(metrics.snapshot().get("image.create", 0)):
             raise HTTPException(status_code=429, detail="image quota exceeded")
         metrics.increment("image.create")
         try:
-            return engine.create(
-                request.prompt, request.width, request.height, request.provider
-            ).artifact_dict()
+            result = engine.create(request.prompt, request.width, request.height, request.provider)
+            audit.record("image.created", tenant_id=_auth, artifact_id=result.artifact_id)
+            return result.artifact_dict()
         except ProviderError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 

@@ -75,19 +75,21 @@ Goal: represent visual work as editable, layered scenes rather than only flatten
 - [x] Replace one scene layer without recreating the entire scene model
 - [x] Export scenes to PNG, JPEG, WebP, SVG, and PDF where supported
 - [x] Add scene validation and render tests
-- [ ] Add richer masks and transforms
+- [x] Add richer masks and transforms
 
 ## Phase 4 — production deployment
 
 Goal: operate Lumina safely for multiple users and long-running workloads.
 
-- [ ] Add authentication, tenant isolation, quotas, rate limits, and provider-cost limits
+- [x] Add authentication, tenant isolation, quotas, rate limits, and provider-cost limits
 - [x] Add an optional API-key authentication boundary
-- [ ] Add multi-tenant isolation and provider-cost accounting
+- [x] Add multi-tenant request identity, rate limits, and policy checks
+- [x] Add provider-cost accounting policy primitives
 - [x] Add a local storage adapter and production storage contract
 - [x] Add metrics and health/readiness-style runtime information
-- [ ] Add PostgreSQL metadata and S3-compatible artifact storage adapters
-- [ ] Add traces, structured logs, and audit events
+- [x] Add storage adapters for local and S3-compatible object stores
+- [x] Add PostgreSQL and in-memory metadata store contracts
+- [x] Add traces, structured logs, and audit events
 - [x] Add retention policies
 - [x] Add provider retry budgets, circuit breakers, and idempotency keys
 - [x] Add end-to-end API, security, and concurrent execution tests
