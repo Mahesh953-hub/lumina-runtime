@@ -1,0 +1,15 @@
+{
+  "prompts": 8,
+  "create_successes": 8,
+  "edit_successes": 8,
+  "analyze_successes": 8,
+  "compare_successes": 8,
+  "scene_successes": 8,
+  "health_status": 200,
+  "issues": [],
+  "observations": [
+    "The default canvas backend is deterministic and validates the complete request/response path; it is not an AI image model.",
+    "Complex prompts exercise structured HTTP creation, analysis, declarative editing, comparison, and scene composition.",
+    "SQLite is used for local job persistence and requires no Docker service."
+  ]
+}
